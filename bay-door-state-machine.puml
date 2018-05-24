@@ -1,0 +1,15 @@
+@startuml
+
+[*] --> open
+open --> open: open requested
+open --> closing: close requested
+closing --> opening: open requested
+closing --> closing: close requested
+closing --> closed: finished closing
+closed --> opening: open requested
+closed --> closed: closed requested
+opening --> opening: open requested
+opening --> closing: close requested
+opening --> open: finished opening
+
+@enduml
