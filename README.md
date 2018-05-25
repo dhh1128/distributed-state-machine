@@ -147,7 +147,7 @@ immediately, but that it will keep working on until it succeeds or until
 its goal changes. A goal does not vary with external conditions, but it
 may cause different reactions as external conditions change.
 
-A nearly complete implementation of this state machine is shown in
+A working implementation of this state machine is shown in
 [airlock.py](airlock.py); see also [test_airlock.py](test_airlock.py).
 
 ## Complications
@@ -166,8 +166,8 @@ middle of a battle?
 
 __If we model this issue correctly, it has almost NO effect on the
 state machine code.__ I can't emphasize this enough. The state machine
-was already correct; complex business logic doesn't change it unless we
-discover new states or new transitions. Instead, we make transitions
+was already correct; _complex business logic doesn't change it unless we
+discover new states or new transitions_. Instead, we make transitions
 hookable by adding the ability to invoke a __pre handler__ that can
 take actions before the transition (including a veto), and a __post
 handler__ that can take actions after the transition has completed.
@@ -187,7 +187,7 @@ here, no matter how complicated the business logic. An airlock might
 trigger pumps, flashing lights, an audit log, a bell tone, a security
 lockout procedure, or any number of other things when someone presses
 a button. All of this logic would live in a business logic module that
-gets hooked when a transition is proposed or completed (or both). The
+gets invoked when a transition is proposed or completed (or both). The
 state machine itself is provably correct and very stable as the code
 evolves--and the business logic, no matter how complicated it gets,
 still has to boil all of its actions down to a binary outcome--will the
@@ -212,30 +212,30 @@ interfere with life-or-death movement of fighters during battle. Let's
 further assume that opening or closing the bay door is faster than
 pressurizing or depressurizing the bay, but not as fast as cycling an
 airlock. For this reason, during battle the preference is to keep the
-airlock in a depressurized (hostile) state. This suggests that we might
-want to implement logic like:
+airlock in a depressurized (`hostile`) state. This suggests that we
+might want to implement logic like:
 
 1. The preferred state of the overall system is to keep the bay
-environment stable (leaving it hostile if it's already hostile, or
-friendly if it's already friendly). The bay env is nearly always
-friendly unless the ship declares a red alert.
+environment stable (leaving it `hostile` if it's already `hostile`, or
+`friendly` if it's already `friendly`). The bay env is nearly always
+`friendly` unless the ship declares a red alert.
 
 2. If the bay environment is hostile, the bay may open or close its door
 at any time. If the bay environment is in any other state, it must first
-transition to hostile before the bay can open its door.
+transition to `hostile` before the bay can open its door.
 
 3. No airlock can open an outer door into the bay when the bay env is in
 a `pressurizing` or `depressurizing` state.
 
-4. As soon as the bay environment leaves the friendly state, all
+4. As soon as the bay environment leaves the `friendly` state, all
 airlocks receive a signal about it. If they were in the middle of
-cycling on the assumption that the bay was friendly, they now reverse
-that assumption and assume it is hostile. Likewise, as soon as the
-bay environment leaves the hostile state, all airlocks receive a signal
-and react as if the bay environment were friendly. However, the airlocks
-can't complete any sequences that lead to doors opening until the bay
-environment fully changes. This means someone might have to wait an
-extra minute or two in an airlock.
+cycling on the assumption that the bay was `friendly`, they now reverse
+that assumption and assume it is `hostile`. Likewise, as soon as the
+bay environment leaves the `hostil`e state, all airlocks receive a
+signal and react as if the bay environment were friendly. However, the
+airlocks can't complete any sequences that lead to doors opening until
+the bay environment fully changes. This means someone might have to wait
+an extra minute or two in an airlock.
 
 We could implement all of this logic in the same business logic modules
 that turn on lights or klaxons or record audit logs of activity for
@@ -243,7 +243,7 @@ the individual state machines. However, I think the cleaner approach
 is to define a new, higher-level system, and to define a state machine
 for it as well. One reason I think this is the right way to solve the
 problem is that state machines are composible in this way in "real
-life". The state machine for a vending machine's delivery apparatus and
+life." The state machine for a vending machine's delivery apparatus and
 the state machine for a vending machine's receive-money-and-make-change
 subsystem interact in a larger state machine for the vending machine as
 a whole; it's the larger state machine that puts the payment subsytem
@@ -262,9 +262,10 @@ each state:
 
 ![battle deck requirements on subsystems](battle-deck-reqs.png)
 
-There are no requirements about the state of airlocks, because the needs
-of the battle deck trump whatever an airlock might be doing. This
-simplifies some things, but complicates others.
+There are no requirements about the _state_ of airlocks, because the
+needs of the battle deck trump whatever an airlock might be doing. This
+complicates the _implementation_ of airlocks, but simplifies some of our
+business logic.
 
 Notice some other subtleties:
 
@@ -277,18 +278,74 @@ machine will certainly need to interact with the state machines of the
 subsystems.
 
 * When a new state is requested, the battle deck state machine
-transitions immediately into a state where the target state becomes
-its goal. It may have to pass through an intermediate condition on the
-way to this goal (e.g., it may have to close the bay's outer door on
-the journey from `active` to `relaxed`) -- but it doesn't ever make the
-intermediate state its goal. An alternative approach would be to make
-the intermediate state its near-term goal, and then to remember to
-automatically trigger a new goal once the intermediate state is
-achieved. It is not obvious to me which approach is better; I see
-tradeoffs either way.
+transitions immediately into a state of attempting to reach the new
+state. I could have implemented this with the goal mechanism that I
+used with airlocks, but for completeness of our exploration I took an
+alternative approach where the target state implies the goal. Though
+this state machine may have to pass through an intermediate state on the
+way to final target (e.g., it may have to close the bay's outer door on
+the journey from `active` to `relaxed`), its state doesn't change until
+its goal changes or is achieved. It is not obvious to me which approach
+is better, goals or states that imply goals; I see tradeoffs either way.
 
 ### Signalling Airlocks
 
 Suppose that Alice is wearing an ordinary uniform instead of a space
 suit, and that she's currently in airlock B, hoping to enter the launch
-bay. She's already pressed button 2,
+bay. She's already pressed button 2, and the airlock is currently in
+the `opening outer` state with the goal of achieving `outer open
+friendly`.
+
+Now the ship goes to red alert. The battle deck state machine receives
+a `ready requested` event. It immediately transitions to a `readying`
+state. Its business logic uses a `post` hook to coordinate reactions
+to this event in all the subsystems. Specifically, it sends an immediate
+signal to any airlocks that have the outer door fully or partly open
+(and which would be pressurized since the bay env is starting in a
+friendly state) that the outer door must close and that any goal beyond
+closing that door must be canceled. It does this by sending the `ask
+open inner` event to each such airlock.
+
+Alice, who was about to step through the outer door of B into the bay,
+now sees her outer door slide the other direction and close. If she
+interprets this surprising action as being caused by a glitch instead of
+understanding that a red alert has overridden her request, she may
+pound on button 2 again, hoping to override. However, when she does, the
+business logic attached by a hook to B's state machine will fire a `pre`
+handler that checks the state of the larger battle deck. Seeing that the
+battle deck is in a `ready requested` state, it realizes that the entire
+bay environment is transitioning; an internal airlock's wishes must be
+deferred. So Alice pounding on button 2 has no effect (`pre` returns
+False to deny the request.)
+
+As soon as the outer door of B closes in front of Alice, the inner door
+back into the hallways of the ship opens, and the airlock achieves a
+stable `inner open` state. Alice can now press button 2 again, and the
+airlock will try to honor her request--but it will do so knowing that
+it has to depressurize because that's the state that the bay environment
+on the other side of the outer door will be achieving.
+
+## Applying this to consensus
+
+I understand the problem that Alex and Sergey highlighted in our recent
+architecture chat--we can't afford to refactor all aspects of our system
+into state machines. We can only do incremental refactors, a modest
+amount at a time. However, I recommend that we do the following:
+
+* Build a matrix representing the state machine for each system and
+subsystem in the PBFT version of the algorithm. Even if we don't
+implement all of the state machines right away, the act of analyzing
+each of them will bring certain questions to light, and teach us a lot.
+
+* Implement as much of the PBFT rewrite using state machines as is
+practical.
+
+* Unit test our state machines in more or less the way I've shown in the
+sample code.
+
+* Avoid complicating state machines with business logic. Move all of
+that logic out of the state machine itself, and instead hook the logic
+with `pre` and `post` handlers for events.
+
+If you agree with this general approach, then I am very eager to see the
+matrices that capture the various state machines in your analysis.
