@@ -60,9 +60,9 @@ State machines consist of __states__ and __transitions__. Transitions
 are triggered by __events__. Some events are triggered manually (e.g.,
 someone pushes a button to cycle an airlock); others might be automatic
 (e.g., once the bay door finishes opening, the bay door should
-automatically go into an `open` state). A simple way to model them is
-with a matrix, where states are rows, events are columns, and
-transitions are the intersections or cells.
+automatically go into an `open` state). A simple way to model state
+machines is with a matrix, where states are rows, events are columns,
+and transitions are the intersections or cells.
 
 ### Bay Door
 
