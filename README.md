@@ -101,6 +101,15 @@ Before I talk about how the state machines interact, and how we might
 have to implement business logic with regards to them, let's propose
 state machines for the other two types as well.
 
+### Bay Environment
+
+The bay environment could be modeled like this:
+
+![bay environment matrix](bay-env-matrix.png)
+
+This is simple enough that it's not worth providing sample code; its
+implementation would be a minor variation on the bay door code.
+
 ### Airlock
 
 The one for airlocks is the most complex. Airlocks never open a door
@@ -134,12 +143,6 @@ the `depressurizing` state if the bay environment is hostile, or to the
 immediately, but that it will keep working on until it succeeds or until
 its goal changes. A goal does not vary with external conditions, but it
 may cause different reactions as external conditions change.
-
-### Bay Environment
-
-The bay environment could be modeled like this:
-
-![bay environment matrix](bay-env-matrix.png)
 
 ## Complications
 
