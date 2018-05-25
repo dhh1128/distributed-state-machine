@@ -100,12 +100,17 @@ state machines for the other two types as well.
 
 ### Airlock
 
-The one for airlocks is the most complex. Airlocks have an inner and
+The one for airlocks is the most complex. Airlocks never open a door
+until the pressure on both sides is equal. They have an inner and
 outer door, and 4 buttons that can be used to open the door at the place
 where a person wants to pass through -- push button 1 if you're in the
 launch bay and you want to open the outer door to enter the airlock,
 button 3 if you're inside the airlock and want to go to the ship
-interior, and so forth:
+interior, and so forth. When you ask for a door to be opened, the
+airlock automatically decides how to change the pressure in the space
+between its two doors, such that the target door is safe to open. Maybe
+no changes are needed, in which case the door opens immediately.
+Otherwise, pressure is equalized first.
 
 ![airlock](airlock-closeup.png)
 
@@ -133,17 +138,19 @@ bit harder.
 First, let's observe that we might have to execute some business logic
 whenever a transition occurs (e.g., to log the change, or to turn on a
 light or sound a klaxon). In fact, some of this business logic might
-change behavior--what if we don't want to allow the bay door to open in
-the middle of a battle?
+have to happen _before_ the transition, and it might even change
+behavior--what if we don't want to allow the bay door to open in the
+middle of a battle?
 
 __If we model this issue correctly, it has almost NO effect on the
 state machine code.__ I can't emphasize this enough. The state machine
 was already correct; complex business logic doesn't change it unless we
 discover new states or new transitions. Instead, we make transitions
 hookable by adding the ability to invoke a __pre handler__ that can
-veto the transition, and a __post handler__ that can take actions after
-the transition has completed. Compare [
-bay_door_v1.py](bay_door_v1.py) and [bay_door_v2.py](bay_door_v2.py):
+take actions before the transition (including a veto), and a __post
+handler__ that can take actions after the transition has completed.
+Compare [bay_door_v1.py](bay_door_v1.py) and [bay_door_v2.py](
+bay_door_v2.py):
 
 ![diff v1 and v2](diff-v1-v2.png)
 
@@ -151,3 +158,64 @@ The tests now have to prove that these hooks actually get invoked, and
 that the pre hook actually has the power to veto a transition. Besides
 this change, they are virtually identical: [test_bay_door_v2.py](
 test_bay_door_v2.py).
+
+In production code, I would not expect any of the three state machines
+I've described above to get any more complicated that what I'm showing
+here, no matter how complicated the business logic. An airlock might
+trigger pumps, flashing lights, an audit log, a bell tone, a security
+lockout procedure, or any number of other things when someone presses
+a button. All of this logic would live in a business logic module that
+gets hooked when a transition is proposed or completed (or both). The
+state machine itself is provably correct and very stable as the code
+evolves--and the business logic, no matter how complicated it gets,
+still has to boil all of its actions down to a binary outcome--will the
+transition be allowed, or not?
+
+### Interactions
+
+Now we are in a position to ask the hardest type of questions: _How
+can we model the complex interactions among all these state machines?_
+After all, nothing that we've done so far helps us code for the case
+where someone presses button 2 on airlock B, expecting a friendly
+environment to exist in the bay--but the bay door is open. Nothing helps
+us interrupt airlock cycling if a leak develops in the bay during
+battle. These are the types of issues that make state machines in our
+consensus algorithm so tricky.
+
+Let's assume that it takes far longer to pressurize or depressurize the
+entire bay than it does to pressurize or depressurize an airlock--and
+that canceling an airlock operation is just an annoyance, whereas
+canceling a bay environment operation is slow, expensive, and might
+interfere with life-or-death movement of fighters during battle. Let's
+further assume that opening or closing the bay door is faster than
+pressurizing or depressurizing the bay, but not as fast as cycling an
+airlock. For this reason, during battle the preference is to keep the
+airlock in a depressurized (hostile) state. This suggests that we might
+want to implement logic like:
+
+1. The preferred state of the overall system is to keep the bay
+environment stable (leaving it hostile if it's already hostile, or
+friendly if it's already friendly). The bay env is nearly always
+friendly unless the ship declares a red alert.
+
+2. If the bay environment is hostile, the bay may open or close its door
+at any time. If the bay environment is in any other state, it must first
+transition to hostile before the bay can open its door.
+
+3. No airlock can open an outer door into the bay when the bay env is in
+a `pressurizing` or `depressurizing` state.
+
+4. As soon as the bay environment leaves the friendly state, all
+airlocks receive a signal about it. If they were in the middle of
+cycling on the assumption that the bay was friendly, they now reverse
+that assumption and assume it is hostile. Likewise, as soon as the
+bay environment leaves the hostile state, all airlocks receive a signal
+and react as if the bay environment were friendly. However, the airlocks
+can't complete any sequences that lead to doors opening until the bay
+environment fully changes. This means someone might have to wait an
+extra minute or two in an airlock.
+
+We could implement all of this logic in the same business logic modules
+that turn on lights or klaxons or record audit logs of activity for
+the individual state machines. However, I think the cleaner approach
+is to implement a higher-
