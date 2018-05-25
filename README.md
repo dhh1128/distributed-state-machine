@@ -123,7 +123,7 @@ The state machine for this airlock might look like this:
 
 I didn't write the code to implement this state machine, but it would
 be just a more complex instance of the same patterns shown in the
-earlier one.
+earlier example.
 
 ### Bay Environment
 
@@ -267,3 +267,9 @@ the intermediate state its near-term goal, and then to remember to
 automatically trigger a new goal once the intermediate state is
 achieved. It is not obvious to me which approach is better; I see
 tradeoffs either way.
+
+### Signalling Airlocks
+
+Suppose that Alice is wearing an ordinary uniform instead of a space
+suit, and that she's currently in airlock B, hoping to enter the launch
+bay. She's already pressed button 2, 
