@@ -115,7 +115,7 @@ implementation would be a minor variation on the bay door code.
 
 ### Airlock
 
-The one for airlocks is the most complex. Airlocks never open a door
+The state for airlocks is the most complex. Airlocks never open a door
 until the pressure on both sides is equal. They have an inner and
 outer door, and 4 buttons that can be used to open the door at the place
 where a person wants to pass through -- push button 1 if you're in the
@@ -146,6 +146,9 @@ the `depressurizing` state if the bay environment is hostile, or to the
 immediately, but that it will keep working on until it succeeds or until
 its goal changes. A goal does not vary with external conditions, but it
 may cause different reactions as external conditions change.
+
+A nearly complete implementation of this state machine is shown in
+[airlock.py](airlock.py); see also [test_airlock.py](test_airlock.py).
 
 ## Complications
 
