@@ -103,7 +103,10 @@ state machines for the other two types as well.
 
 ### Bay Environment
 
-The bay environment could be modeled like this:
+The bay environment could have a state that's warm and pressurized, that
+we can call `friendly`; this would be suitable for people to walk around
+in a normal uniform. The opposite state would require a spacesuit; let's
+call that `hostile`. This suggests a state machine such as:
 
 ![bay environment matrix](bay-env-matrix.png)
 
