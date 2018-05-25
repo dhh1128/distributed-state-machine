@@ -347,5 +347,13 @@ sample code.
 that logic out of the state machine itself, and instead hook the logic
 with `pre` and `post` handlers for events.
 
+One difference between my battle deck system and the one we have to
+build for consensus is that the battle deck system is centralized
+whereas the consensus state is duplicated on each node. I think this is
+noteworthy, but not fatal to what I'm recommending. We can say that
+transitions in the uber state machine for consensus only succeed when
+we see enough evidence to know that consensus has occurred. Is that
+too simplistic?
+
 If you agree with this general approach, then I am very eager to see the
 matrices that capture the various state machines in your analysis.
