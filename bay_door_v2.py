@@ -25,7 +25,6 @@ class StateMachine:
             if s == OPENING_STATE:
                 self._transition_to(OPEN_STATE, event)
             else:
-                illegal = True
                 raise AssertionError("Illegal event %s for state %s." % (EVENT_NAMES[event], STATE_NAMES[s]))
         elif event == FINISHED_CLOSING_EVENT:
             if s == CLOSING_STATE:

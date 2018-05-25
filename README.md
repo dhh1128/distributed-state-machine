@@ -119,11 +119,21 @@ Otherwise, pressure is equalized first.
 
 The state machine for this airlock might look like this:
 
-![airlock matrix](airlock-matrix.png)
+<a target="spreadsheet" href="http://bit.ly/2saruah"><img
+src="airlock-matrix.png" width="640"/></a>
 
-I didn't write the code to implement this state machine, but it would
-be just a more complex instance of the same patterns shown in the
-earlier example.
+This state machine isn't just more complicated because it's bigger; it
+introduces two new ideas:
+
+* The notion of conditional transitions -- going to different states
+depending on external conditions. (Example: in the `closed + pressurized`
+state, if the `ask open outer` event occurs, the airlock transitions to
+the `depressurizing` state if the bay environment is hostile, or to the
+`opening outer` state if the bay environment is also pressurized.)
+* The notion of a __goal__--something the state machine can't achieve
+immediately, but that it will keep working on until it succeeds or until
+its goal changes. A goal does not vary with external conditions, but it
+may cause different reactions as external conditions change.
 
 ### Bay Environment
 
@@ -272,4 +282,4 @@ tradeoffs either way.
 
 Suppose that Alice is wearing an ordinary uniform instead of a space
 suit, and that she's currently in airlock B, hoping to enter the launch
-bay. She's already pressed button 2, 
+bay. She's already pressed button 2,
