@@ -57,9 +57,12 @@ consensus algorithm.
 
 Now, let’s describe each of the state machines in isolation, formally.
 State machines consist of __states__ and __transitions__. Transitions
-are triggered by __events__. A simple way to model them is with a
-matrix, where states are rows, events are columns, and transitions are
-the intersections or cells.
+are triggered by __events__. Some events are triggered manually (e.g.,
+someone pushes a button to cycle an airlock); others might be automatic
+(e.g., once the bay door finishes open, the bay door should
+automatically go into an `open` state). A simple way to model them is
+with a matrix, where states are rows, events are columns, and
+transitions are the intersections or cells.
 
 ### Bay Door
 
@@ -218,4 +221,49 @@ extra minute or two in an airlock.
 We could implement all of this logic in the same business logic modules
 that turn on lights or klaxons or record audit logs of activity for
 the individual state machines. However, I think the cleaner approach
-is to implement a higher-
+is to define a new, higher-level system, and to define a state machine
+for it as well. One reason I think this is the right way to solve the
+problem is that state machines are composible in this way in "real
+life". The state machine for a vending machine's delivery apparatus and
+the state machine for a vending machine's receive-money-and-make-change
+subsystem interact in a larger state machine for the vending machine as
+a whole; it's the larger state machine that puts the payment subsytem
+into an inert state while the delivery mechanism is dropping a can of
+soda or a bag of chips into the opening where it can be retrieved.
+
+So let's imagine that this launch bay and its airlocks and environment
+are all part of the ship's __battle deck__ uber system. The battle deck
+can send signals to its subsystems to help them react to its broader
+goals. We could model it like this:
+
+![battle deck matrix](battle-deck-matrix.png)
+
+Note also the requirements imposed on subsytems in order to achieve
+each state:
+
+![battle deck requirements on subsystems](battle-deck-reqs.png)
+
+There are no requirements about the state of airlocks, because the needs
+of the battle deck trump whatever an airlock might be doing. This
+simplifies some things, but complicates others.
+
+Notice some other subtleties:
+
+* The battle deck thinks about itself as a single coherent system, as
+far as the state machine is concerned. A substantial amount of change
+might have to take place to ready the battle deck for action, or to
+relax when a battle is over--but at this level of detail, that change
+is not modeled. However, the business logic on hooks for this state
+machine will certainly need to interact with the state machines of the
+subsystems.
+
+* When a new state is requested, the battle deck state machine
+transitions immediately into a state where the target state becomes
+its goal. It may have to pass through an intermediate condition on the
+way to this goal (e.g., it may have to close the bay's outer door on
+the journey from `active` to `relaxed`) -- but it doesn't ever make the
+intermediate state its goal. An alternative approach would be to make
+the intermediate state its near-term goal, and then to remember to
+automatically trigger a new goal once the intermediate state is
+achieved. It is not obvious to me which approach is better; I see
+tradeoffs either way.
