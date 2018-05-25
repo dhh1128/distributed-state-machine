@@ -52,7 +52,7 @@ depressurized. We don’t want to be able to open a bay door if the launch
 bay isn’t depressurized. The airlocks have to coordinate with one
 another and with the bay door to achieve consensus on a target state for
 the launch bay. Furthermore, there can be a lag in transitions, and
-timeouts can occure, just like there are timing considerations in our
+timeouts can occur, just like there are timing considerations in our
 consensus algorithm.
 
 Now, let’s describe each of the state machines in isolation, formally.
